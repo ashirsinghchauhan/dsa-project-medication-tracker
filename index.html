@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Prescription & Adherence Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #2a6f97;
+            --secondary-color: #014f86;
+            --accent-color: #61a5c2;
+            --bg-color: #f8f9fa;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--secondary-color);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 2px solid #f0f0f0;
+            font-weight: 600;
+            color: var(--secondary-color);
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .badge-pending {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .badge-taken {
+            background-color: #198754;
+            color: #fff;
+        }
+
+        .badge-missed {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        .heap-visualizer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 15px;
+            background: #eef4f8;
+            border-radius: 8px;
+            min-height: 80px;
+            align-items: center;
+        }
+
+        .heap-node {
+            background: #ffffff;
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        .heap-node .index-tag {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: var(--secondary-color);
+            color: white;
+            font-size: 10px;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .log-terminal {
+            background-color: #1e1e1e;
+            color: #00ff66;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 250px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <i class="bi bi-capsule-pill fs-3"></i>
+                <span>Smart Rx Tracker <small class="fs-6 opacity-75">(Min-Heap DSA)</small></span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+        <div class="row g-4">
+            
+            <!-- Left Column: Controls & Input -->
+            <div class="col-lg-4">
+                
+                <!-- Add Prescription Form -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle-fill"></i> Add Prescription
+                    </div>
+                    <div class="card-body">
+                        <form id="rxForm">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small">Patient ID</label>
+                                    <input type="number" id="patientID" class="form-control" required placeholder="e.g. 101">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Medication ID</label>
+                                    <input type="number" id="medID" class="form-control" required placeholder="e.g. 5001">
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small">Medication Name</label>
+                                <input type="text" id="medName" class="form-control" required placeholder="e.g. Amoxicillin">
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small">Dosage (mg)</label>
+                                <input type="number" id="dosageMg" class="form-control" required placeholder="e.g. 500">
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small">Hour (0-23)</label>
+                                    <input type="number" id="schedHour" class="form-control" min="0" max="23" required placeholder="09">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Minute (0-59)</label>
+                                    <input type="number" id="schedMin" class="form-control" min="0" max="59" required placeholder="30">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-calendar-plus me-1"></i> Schedule Prescription
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Time Simulation Control -->
+                <div class="card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-clock-history"></i> Adherence Time Simulator
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Simulate checking scheduled doses against the system clock.</p>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small">Current Hour</label>
+                                <input type="number" id="simHour" class="form-control" min="0" max="23" value="09">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Current Minute</label>
+                                <input type="number" id="simMin" class="form-control" min="0" max="59" value="00">
+                            </div>
+                        </div>
+                        <button class="btn btn-warning w-100 text-dark font-weight-bold" onclick="simulateAdherence()">
+                            <i class="bi bi-play-circle me-1"></i> Run Adherence Check
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Queue, Heap Visualizer & Logs -->
+            <div class="col-lg-8">
+
+                <!-- Min-Heap Internal Array Visualizer -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-diagram-3-fill me-2"></i>Min-Heap Priority Queue (Internal Array)</span>
+                        <span class="badge bg-secondary" id="heapSizeBadge">Size: 0</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="heap-visualizer" id="heapVisualizer">
+                            <span class="text-muted small">Queue is currently empty. Add prescriptions to populate the heap structure.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scheduled Medication Table -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-task me-2"></i>Active Prescription Schedules</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Med ID</th>
+                                        <th>Patient ID</th>
+                                        <th>Medication</th>
+                                        <th>Dosage</th>
+                                        <th>Scheduled</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scheduleTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">No active prescription schedules available.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit File Logs Terminal -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-file-earmark-text-fill me-2"></i>Adherence Audit Logs (<code>adherence_log.txt</code>)</span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">Clear Logs</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-terminal" id="logTerminal">
+                            [SYSTEM READY] Log file initialized...<br>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Data Structures (Matching C Implementation)
+        class PriorityQueue {
+            constructor() {
+                this.nodes = [];
+            }
+
+            size() {
+                return this.nodes.length;
+            }
+
+            insert(prescription) {
+                const timeInMinutes = prescription.scheduledHour * 60 + prescription.scheduledMin;
+                const node = { data: prescription, timeInMinutes };
+                
+                this.nodes.push(node);
+                this.heapifyUp(this.nodes.length - 1);
+            }
+
+            heapifyUp(index) {
+                let curr = index;
+                while (curr > 0) {
+                    let parent = Math.floor((curr - 1) / 2);
+                    if (this.nodes[curr].timeInMinutes < this.nodes[parent].timeInMinutes) {
+                        // Swap
+                        let temp = this.nodes[curr];
+                        this.nodes[curr] = this.nodes[parent];
+                        this.nodes[parent] = temp;
+                        curr = parent;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        const pq = new PriorityQueue();
+        const logs = [];
+
+        // Helper: Format Time
+        function formatTime(h, m) {
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        // Helper: Format Timestamp
+        function getTimestamp() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+        }
+
+        // Add Log Entry
+        function logAdherenceEvent(patientName, medName, status, hour, min) {
+            const entry = `[${getTimestamp()}] Patient: ${patientName} | Med: ${medName} | Scheduled: ${formatTime(hour, min)} | Status: ${status}`;
+            logs.push(entry);
+            renderLogs();
+        }
+
+        // Render Functions
+        function renderLogs() {
+            const logTerm = document.getElementById('logTerminal');
+            logTerm.innerHTML = logs.map(line => `<div>${line}</div>`).join('');
+            logTerm.scrollTop = logTerm.scrollHeight;
+        }
+
+        function clearLogs() {
+            logs.length = 0;
+            renderLogs();
+        }
+
+        function renderUI() {
+            renderHeapVisualizer();
+            renderTable();
+        }
+
+        function renderHeapVisualizer() {
+            const container = document.getElementById('heapVisualizer');
+            document.getElementById('heapSizeBadge').innerText = `Size: ${pq.size()}`;
+
+            if (pq.size() === 0) {
+                container.innerHTML = '<span class="text-muted small">Queue is currently empty. Add prescriptions to populate the heap structure.</span>';
+                return;
+            }
+
+            container.innerHTML = pq.nodes.map((node, index) => `
+                <div class="heap-node">
+                    <span class="index-tag">${index}</span>
+                    <strong class="d-block text-dark">${node.data.medName}</strong>
+                    <small class="text-primary">${formatTime(node.data.scheduledHour, node.data.scheduledMin)}</small>
+                    <div class="small text-muted">${node.timeInMinutes}m</div>
+                </div>
+            `).join('');
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('scheduleTableBody');
+
+            if (pq.size() === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No active prescription schedules available.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = pq.nodes.map((node, index) => {
+                const p = node.data;
+                let badgeClass = p.taken === 1 ? 'badge-taken' : (p.taken === -1 ? 'badge-missed' : 'badge-pending');
+                let statusText = p.taken === 1 ? 'TAKEN' : (p.taken === -1 ? 'MISSED' : 'PENDING');
+
+                return `
+                    <tr>
+                        <td><strong>#${p.medID}</strong></td>
+                        <td>${p.patientID}</td>
+                        <td>${p.medName}</td>
+                        <td>${p.dosageMg} mg</td>
+                        <td><i class="bi bi-clock me-1"></i>${formatTime(p.scheduledHour, p.scheduledMin)}</td>
+                        <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                        <td>
+                            ${p.taken === 0 ? `
+                                <button class="btn btn-sm btn-outline-success" onclick="markAsTaken(${index})">
+                                    <i class="bi bi-check-lg"></i> Mark Taken
+                                </button>
+                            ` : '<span class="text-muted small">N/A</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Manual Action
+        function markAsTaken(index) {
+            const node = pq.nodes[index];
+            node.data.taken = 1;
+            logAdherenceEvent(`Patient_${node.data.patientID}`, node.data.medName, "TAKEN_ON_TIME", node.data.scheduledHour, node.data.scheduledMin);
+            renderUI();
+        }
+
+        // Form Submit
+        document.getElementById('rxForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const prescription = {
+                patientID: parseInt(document.getElementById('patientID').value),
+                medID: parseInt(document.getElementById('medID').value),
+                medName: document.getElementById('medName').value,
+                dosageMg: parseInt(document.getElementById('dosageMg').value),
+                scheduledHour: parseInt(document.getElementById('schedHour').value),
+                scheduledMin: parseInt(document.getElementById('schedMin').value),
+                taken: 0
+            };
+
+            pq.insert(prescription);
+            renderUI();
+            this.reset();
+        });
+
+        // Simulate Adherence Check
+        function simulateAdherence() {
+            if (pq.size() === 0) {
+                alert("No pending prescriptions to simulate.");
+                return;
+            }
+
+            const currentHour = parseInt(document.getElementById('simHour').value);
+            const currentMin = parseInt(document.getElementById('simMin').value);
+            const currentTimeInMin = currentHour * 60 + currentMin;
+
+            let checked = 0;
+
+            for (let i = 0; i < pq.size(); i++) {
+                const node = pq.nodes[i];
+                if (node.data.taken !== 0) continue;
+
+                const schedMin = node.timeInMinutes;
+
+                // Past by > 30 minutes
+                if (currentTimeInMin > schedMin + 30) {
+                    node.data.taken = -1; // Marked as missed
+                    alert(`[ALERT] MISSED DOSE!\nPatient ID ${node.data.patientID} missed ${node.data.medName} (${node.data.dosageMg}mg) scheduled for ${formatTime(node.data.scheduledHour, node.data.scheduledMin)}!`);
+                    
+                    logAdherenceEvent(`Patient_${node.data.patientID}`, node.data.medName, "MISSED_ALERT_SENT", node.data.scheduledHour, node.data.scheduledMin);
+                    checked++;
+                }
+                // Within reminder window (-15 min to +30 min)
+                else if (currentTimeInMin >= schedMin - 15 && currentTimeInMin <= schedMin + 30) {
+                    const takeNow = confirm(`[REMINDER] Time to take ${node.data.medName} (${node.data.dosageMg}mg) for Patient ID ${node.data.patientID} (Scheduled: ${formatTime(node.data.scheduledHour, node.data.scheduledMin)}).\n\nMark as TAKEN now?`);
+                    
+                    if (takeNow) {
+                        node.data.taken = 1;
+                        logAdherenceEvent(`Patient_${node.data.patientID}`, node.data.medName, "TAKEN_ON_TIME", node.data.scheduledHour, node.data.scheduledMin);
+                    }
+                    checked++;
+                }
+            }
+
+            if (checked === 0) {
+                alert("No scheduled doses matching the current time window.");
+            }
+
+            renderUI();
+        }
+
+        // Initial Render
+        renderUI();
+    </script>
+</body>
+</html>
